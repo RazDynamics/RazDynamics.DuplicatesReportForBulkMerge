@@ -1,4 +1,5 @@
-﻿using McTools.Xrm.Connection;
+﻿
+using McTools.Xrm.Connection;
 using Microsoft.Crm.Sdk.Messages;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
@@ -51,7 +52,7 @@ namespace CRMConsultants.DuplicateDetectionReport
                     var request = new RetrieveAllEntitiesRequest { EntityFilters = EntityFilters.Entity };
                     var response = (RetrieveAllEntitiesResponse)Service.Execute(request);
 
-                    e.Result = response.EntityMetadata;
+                    e.Result = response.EntityMetadata;     
                 },
 
                 PostWorkCallBack = e =>
@@ -130,31 +131,32 @@ namespace CRMConsultants.DuplicateDetectionReport
                         }
                 }
             });
-
-            if (crmAsyncJobs != null && crmAsyncJobs.Entities.Count > 0)
+            this.Invoke(new Action(() =>
             {
-                gbDuplicateDetectionJob.Visible = true;
-
-                foreach (var crmAsyncJob in crmAsyncJobs.Entities)
+                if (crmAsyncJobs != null && crmAsyncJobs.Entities.Count > 0)
                 {
-                    if (crmAsyncJob != null && crmAsyncJob.Attributes.Contains("name") && crmAsyncJob.Attributes["name"] != null)
+                    gbDuplicateDetectionJob.Visible = true;
+                    //ApplicationSetting.ExistingJobIds.Add(Guid.em, "Please select");
+                    foreach (var crmAsyncJob in crmAsyncJobs.Entities)
                     {
-                        ApplicationSetting.ExistingJobIds.Add(crmAsyncJob.Id, Convert.ToString(crmAsyncJob.Attributes["name"]));
+                        if (crmAsyncJob != null && crmAsyncJob.Attributes.Contains("name") && crmAsyncJob.Attributes["name"] != null)
+                        {
+                            ApplicationSetting.ExistingJobIds.Add(crmAsyncJob.Id, Convert.ToString(crmAsyncJob.Attributes["name"]));
+                        }
                     }
+                    cmbDuplicateDetectionJobs.DataSource = new BindingSource(ApplicationSetting.ExistingJobIds, null);
+                    cmbDuplicateDetectionJobs.DisplayMember = "Value";
+                    cmbDuplicateDetectionJobs.ValueMember = "Key";
+                    cmbDuplicateDetectionJobs.Enabled = true;
                 }
-                cmbDuplicateDetectionJobs.DataSource = new BindingSource(ApplicationSetting.ExistingJobIds, null);
-                cmbDuplicateDetectionJobs.DisplayMember = "Value";
-                cmbDuplicateDetectionJobs.ValueMember = "Key";
-                cmbDuplicateDetectionJobs.Enabled = true;
-            }
-            else
-            {
-                if (cmbDuplicateDetectionJobs.Items != null)
-                    cmbDuplicateDetectionJobs.DataSource = null;
-                gbDuplicateDetectionJob.Visible = false;
-            }
+                else
+                {
+                    if (cmbDuplicateDetectionJobs.Items != null)
+                        cmbDuplicateDetectionJobs.DataSource = null;
+                    gbDuplicateDetectionJob.Visible = false;
+                }
+            }));
         }
-
 
         /// <summary>
         /// Get the Duplicate Records
@@ -163,16 +165,11 @@ namespace CRMConsultants.DuplicateDetectionReport
         /// <returns></returns>
         private EntityCollection GetDuplicateRecords(Guid jobId)
         {
-            RetrieveMultipleRequest rmRequest = null;
-            RetrieveMultipleResponse rmResponse = null;
-            rmRequest = new RetrieveMultipleRequest()
+            QueryExpression queryExpresssion = new QueryExpression(ApplicationSetting.SelectedEntity.LogicalName)
             {
-                Query = new QueryExpression(ApplicationSetting.SelectedEntity.LogicalName)
-                {
-                    ColumnSet = new ColumnSet(ApplicationSetting.AttributesSchemaList.ToArray()),
-                    //ColumnSet = new ColumnSet(true),
-                    Distinct = true,
-                    LinkEntities =
+                ColumnSet = new ColumnSet(ApplicationSetting.AttributesSchemaList.ToArray()),
+                Distinct = false,
+                LinkEntities =
                                 {
                                     new LinkEntity(ApplicationSetting.SelectedEntity.LogicalName, "duplicaterecord", ApplicationSetting.SelectedEntity.PrimaryIdAttribute, "baserecordid", JoinOperator.Inner)
                                     {
@@ -186,22 +183,73 @@ namespace CRMConsultants.DuplicateDetectionReport
                                     },
                                      new LinkEntity(ApplicationSetting.SelectedEntity.LogicalName, "activitypointer", ApplicationSetting.SelectedEntity.PrimaryIdAttribute, "regardingobjectid", JoinOperator.LeftOuter)
                                     {
-                                        Columns = new ColumnSet(true),
+                                        Columns = new ColumnSet("activityid","activitytypecode"),
                                         EntityAlias="Activities",
                                     }
-                               }
-                }
+                             }
+
+            };
+            return Service.RetrieveMultiple(queryExpresssion);
+        }
+
+        /// <summary>
+        /// Get the Duplicate Records
+        /// </summary>
+        /// <param name="jobId"></param>
+        /// <returns></returns>
+        private EntityCollection GetRelatedDuplicateRecords(Guid [] entityId)
+        {
+            EntityCollection mainColl = new EntityCollection();
+            int queryCount = 5000;
+
+            // Initialize the page number.
+            int pageNumber = 1;
+
+            QueryExpression queryExpresssion = null;
+
+            queryExpresssion = new QueryExpression("activitypointer")
+            {
+                ColumnSet = new ColumnSet("activityid", "activitytypecode", "regardingobjectid"),
+                PageInfo = { PageNumber = pageNumber, PagingCookie = null, Count = queryCount },
+                Distinct = false,
+                Criteria =
+             {
+                   FilterOperator = LogicalOperator.And,
+                      Conditions =
+                         {
+                            new ConditionExpression("regardingobjectid", ConditionOperator.In, entityId)
+                         }
+               },
+
             };
 
-            rmResponse = (RetrieveMultipleResponse)Service.Execute(rmRequest);
-
-            if (rmResponse.EntityCollection != null && rmResponse.EntityCollection.Entities.Count > 0)
+            while (true)
             {
-                return rmResponse.EntityCollection;
-            }
+                // Retrieve the page.
+                EntityCollection results = Service.RetrieveMultiple(queryExpresssion);
+                if (results.Entities != null)
+                {
+                    mainColl.Entities.AddRange(results.Entities);
+                }
 
-            return null;
+                // Check for more records, if it returns true.
+                if (results.MoreRecords)
+                {
+                    // Increment the page number to retrieve the next page.
+                    queryExpresssion.PageInfo.PageNumber++;
+
+                    // Set the paging cookie to the paging cookie returned from current results.
+                    queryExpresssion.PageInfo.PagingCookie = results.PagingCookie;
+                }
+                else
+                {
+                    // If no more records are in the result nodes, exit the loop.
+                    break;
+                }
+            }
+            return mainColl;
         }
+
         /// <summary>
         /// Get duplicate criterias
         /// </summary>
@@ -323,12 +371,6 @@ namespace CRMConsultants.DuplicateDetectionReport
                         attributeValue = Convert.ToString(attibuteObj);
                     }
                     break;
-
-                //case "UNIQUEIDENTIFIER":
-                //    {
-                //        attributeValue = Convert.ToString(entity.Id);
-                //    }
-
                 case "GUID":
                     {
                         attributeValue = Convert.ToString(attibuteObj);
@@ -336,173 +378,6 @@ namespace CRMConsultants.DuplicateDetectionReport
                     break;
             }
             return attributeValue;
-        }
-
-        private void GetRecordsAsPerType(Entity record, string baseAttribueName, ref IEnumerable<Entity> tempRecords, object attrValue)
-        {
-            string attributeType = "";
-            if (attrValue != null)
-            {
-                attributeType = attrValue.GetType().Name;
-            }
-
-            switch (attributeType.ToUpper())
-            {
-                case "BOOLEAN":
-                    {
-
-                        if (attrValue != null)
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && (bool)(ent.Attributes[baseAttribueName]) == (bool)attrValue && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && (bool)(ent.Attributes[baseAttribueName]) == (bool)attrValue && record.Id != ent.Id);
-                        }
-                        else
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                        }
-                    }
-                    break;
-
-                case "DECIMAL":
-                    {
-                        if (attrValue != null)
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && (Decimal)(ent.Attributes[baseAttribueName]) == (Decimal)attrValue && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && (Decimal)(ent.Attributes[baseAttribueName]) == (Decimal)attrValue && record.Id != ent.Id);
-                        }
-                        else
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                        }
-                    }
-                    break;
-
-                case "DOUBLE":
-                    {
-                        if (attrValue != null)
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && (Double)(ent.Attributes[baseAttribueName]) == (Double)attrValue && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && (Double)(ent.Attributes[baseAttribueName]) == (Double)attrValue && record.Id != ent.Id);
-                        }
-                        else
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                        }
-                    }
-                    break;
-
-                case "INT32":
-                    {
-                        if (attrValue != null)
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && (int)(ent.Attributes[baseAttribueName]) == (int)attrValue && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && (int)(ent.Attributes[baseAttribueName]) == (int)attrValue && record.Id != ent.Id);
-                        }
-                        else
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                        }
-                    }
-                    break;
-
-                case "MONEY":
-                    {
-
-                        if (attrValue != null)
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && ((Money)record.Attributes[baseAttribueName]).Value == ((Money)attrValue).Value && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && ((Money)record.Attributes[baseAttribueName]).Value == ((Money)attrValue).Value && record.Id != ent.Id);
-                        }
-                        else
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                        }
-                    }
-                    break;
-
-                case "ENTITYREFERENCE":
-                    {
-                        if (attrValue != null)
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && ((EntityReference)record.Attributes[baseAttribueName]).Id == ((EntityReference)attrValue).Id && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && ((EntityReference)record.Attributes[baseAttribueName]).Id == ((EntityReference)attrValue).Id && record.Id != ent.Id);
-                        }
-                        else
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                        }
-                    }
-                    break;
-
-                case "MEMO":
-                case "STRING":
-                    {
-                        if (attrValue != null)
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && (string)(ent.Attributes[baseAttribueName]) == (string)attrValue && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && (string)(ent.Attributes[baseAttribueName]) == (string)attrValue && record.Id != ent.Id);
-                        }
-                        else
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                        }
-                    }
-                    break;
-
-                case "OPTIONSETVALUE":
-                    {
-                        if (attrValue != null)
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && ((OptionSetValue)record.Attributes[baseAttribueName]).Value == ((OptionSetValue)attrValue).Value && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && ((OptionSetValue)record.Attributes[baseAttribueName]).Value == ((OptionSetValue)attrValue).Value && record.Id != ent.Id);
-                        }
-                        else
-                        {
-                            if (tempRecords == null)
-                                tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                            else
-                                tempRecords = tempRecords.Where(ent => ((!ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null))) && record.Id != ent.Id);
-                        }
-                    }
-                    break;
-            }
         }
 
         private void GenerateHeader(CreateExcelDoc excell_app)
@@ -520,7 +395,6 @@ namespace CRMConsultants.DuplicateDetectionReport
         {
             ApplicationSetting.AttributesSchemaList = new List<string>();
             ApplicationSetting.AttributesDisplayList = new List<string>();
-            // ApplicationSetting.ExtraColumns = new List<string>();
             ApplicationSetting.AttributesToDisplay = new List<string>();
             ApplicationSetting.AttributesToDisplayName = new List<string>();
 
@@ -542,13 +416,8 @@ namespace CRMConsultants.DuplicateDetectionReport
 
             foreach (var item in unselectedItems)
             {
-                //if ((string)item.Tag == "createdon" || (string)item.Tag == "modifiedon")
-                //{
-                //    ApplicationSetting.ExtraColumns.Remove((string)item.Tag);
-                //}
                 ApplicationSetting.AttributesSchemaList.Add((string)item.Tag);
                 ApplicationSetting.AttributesDisplayList.Add((string)item.Text);
-                //ApplicationSetting.ExtraColumns.Add((string)item.Tag);
             }
         }
 
@@ -574,106 +443,76 @@ namespace CRMConsultants.DuplicateDetectionReport
                 {
                     #region Duplicate Collection #
                     List<DuplicateRecords> duplicateRecords = new List<DuplicateRecords>();
-                    foreach (Entity record in ApplicationSetting.DuplicateCollection.Entities)
+                    foreach (DuplicateRecords record in ApplicationSetting.DuplicateRecords)
                     {
                         List<Entity> duplicatesCollection = new List<Entity>();
 
-                        bw.ReportProgress(progressCounter * 100 / ApplicationSetting.DuplicateCollection.Entities.Count(), string.Concat("Generating duplicate report........"));
+                        bw.ReportProgress(progressCounter * 100 / ApplicationSetting.DuplicateRecords.Count(), string.Concat("Generating duplicate report........"));
+                        duplicatesCollection.AddRange(record.ChildEntity);
 
-                        if (!DoesItContain(duplicateRecords, record.Id) && record.Attributes.Contains("statecode") && ((OptionSetValue)record.Attributes["statecode"]).Value == 0)
+                            duplicatesCollection.Add(record.MasterEntity);
+
+                        #region # Sort Master and Child #
+                        if (duplicatesCollection != null && duplicatesCollection.Count() > 0)
                         {
-                            duplicatesCollection.Add(record);
-                            Entity duplicateTemp = new Entity(ApplicationSetting.SelectedEntity.LogicalName);
-                            duplicateTemp.Id = record.Id;
-                            var re = new RetrieveDuplicatesRequest
+                            IEnumerable<Entity> sortedRecord = null;
+                            if (rbCreatedOn.Checked)
                             {
-                                BusinessEntity = duplicateTemp,
-                                MatchingEntityName = duplicateTemp.LogicalName,
-                                PagingInfo = new PagingInfo() { PageNumber = 1, Count = 500 }
-                            };
-
-                            var response = (RetrieveDuplicatesResponse)Service.Execute(re);
-                            if (response != null && response.DuplicateCollection != null)
+                                DateTime dateSortedFound = duplicatesCollection.Min(c => (DateTime)c.Attributes["createdon"]);
+                                sortedRecord = duplicatesCollection.Where(c => (DateTime)c.Attributes["createdon"] == dateSortedFound);
+                            }
+                            else if (rbModifiedOn.Checked)
                             {
-                                foreach (Entity duplicate in response.DuplicateCollection.Entities)
-                                {
-                                    Entity recordFound = ApplicationSetting.DuplicateCollection.Entities.Where(en => en.Id == duplicate.Id).FirstOrDefault();
-                                    if (recordFound != null && recordFound.Attributes.Contains("statecode") && ((OptionSetValue)recordFound.Attributes["statecode"]).Value == 0)
-                                    {
-                                        duplicatesCollection.Add(recordFound);
-                                    }
-                                }
+                                DateTime dateSortedFound = duplicatesCollection.Max(c => (DateTime)c.Attributes["modifiedon"]);
+                                sortedRecord = duplicatesCollection.Where(c => (DateTime)c.Attributes["modifiedon"] == dateSortedFound);
+                            }
+                            else if (rbNoOfActivities.Checked)
+                            {
+                                int activitiesCount = duplicatesCollection.Max(c => (int)c.Attributes["ActivitiesCount"]);
+                                sortedRecord = duplicatesCollection.Where(c => (int)c.Attributes["ActivitiesCount"] == activitiesCount);
+                            }
+                            else if (rbnNoOfCompletedFields.Checked)
+                            {
+                                int fieldsCount = duplicatesCollection.Max(c => (int)c.Attributes["CountOfCompletedFields"]);
+                                sortedRecord = duplicatesCollection.Where(c => (int)c.Attributes["CountOfCompletedFields"] == fieldsCount);
                             }
 
-                            #region # Sort Master and Child #
-                            if (duplicatesCollection != null && duplicatesCollection.Count() > 0)
+                            // If only one record no need to query
+                            if (sortedRecord != null && sortedRecord.Count() > 0)
                             {
-                                IEnumerable<Entity> sortedRecord = null;
-                                if (rbNoOfActivities.Enabled)
+                                Entity recordFound = sortedRecord.FirstOrDefault();
+                                List<Entity> childRecords = duplicatesCollection.Where(c => c.Id != recordFound.Id).ToList();
+                                List<Entity> childs = new List<Entity>();
+                                if (recordFound != null && recordFound.Attributes.Contains("statecode") && ((OptionSetValue)recordFound.Attributes["statecode"]).Value == 0)
                                 {
-                                    int activitiesCount = rbLeast.Enabled ? duplicatesCollection.Min(c => (int)c.Attributes["ActivitiesCount"]) : duplicatesCollection.Max(c => (int)c.Attributes["ActivitiesCount"]);
-                                    sortedRecord = duplicatesCollection.Where(c => (int)c.Attributes["ActivitiesCount"] == activitiesCount);
-                                }
-                                else
-                                {
-                                    int fieldsCount = rbLeast.Enabled ? duplicatesCollection.Min(c => (int)c.Attributes["CountOfCompletedFields"]) : duplicatesCollection.Max(c => (int)c.Attributes["CountOfCompletedFields"]);
-                                    sortedRecord = duplicatesCollection.Where(c => (int)c.Attributes["CountOfCompletedFields"] == fieldsCount);
-                                }
-                                // If Null 
-                                if (sortedRecord == null)
-                                {
-                                    if (rbCreatedOn.Enabled)
-                                    {
-                                        DateTime dateSortedFound = rbAsc.Enabled ? duplicatesCollection.Min(c => (DateTime)c.Attributes["createdon"]) : duplicatesCollection.Max(c => (DateTime)c.Attributes["createdon"]);
-                                        sortedRecord = duplicatesCollection.Where(c => (DateTime)c.Attributes["createdon"] == dateSortedFound);
-                                    }
-                                    else
-                                    {
-                                        DateTime dateSortedFound = rbAsc.Enabled ? duplicatesCollection.Min(c => (DateTime)c.Attributes["modifiedon"]) : duplicatesCollection.Max(c => (DateTime)c.Attributes["modifiedon"]);
-                                        sortedRecord = duplicatesCollection.Where(c => (DateTime)c.Attributes["modifiedon"] == dateSortedFound);
-                                    }
-                                }
-                                // More then one record query for second condition
-                                else if (sortedRecord != null && sortedRecord.Count() > 1)
-                                {
-                                    if (rbCreatedOn.Enabled)
-                                    {
-                                        DateTime dateSortedFound = rbAsc.Enabled ? sortedRecord.Min(c => (DateTime)c.Attributes["createdon"]) : sortedRecord.Max(c => (DateTime)c.Attributes["createdon"]);
-                                        sortedRecord = sortedRecord.Where(c => (DateTime)c.Attributes["createdon"] == dateSortedFound);
-                                    }
-                                    else
-                                    {
-                                        DateTime dateSortedFound = rbAsc.Enabled ? sortedRecord.Min(c => (DateTime)c.Attributes["modifiedon"]) : sortedRecord.Max(c => (DateTime)c.Attributes["modifiedon"]);
-                                        sortedRecord = sortedRecord.Where(c => (DateTime)c.Attributes["modifiedon"] == dateSortedFound);
-                                    }
-                                }
-                                // If only one record no need to query
-                                if (sortedRecord != null && sortedRecord.Count() > 0)
-                                {
-                                    Entity recordFound = sortedRecord.FirstOrDefault();
-                                    IEnumerable<Entity> childRecords = duplicatesCollection.Where(c => c.Id != recordFound.Id);
                                     if (childRecords != null && childRecords.Count() > 0)
                                     {
                                         List<Guid> ids = new List<Guid>();
                                         foreach (var childId in childRecords)
                                         {
-                                            ids.Add(childId.Id);
+                                            if (childId.Attributes.Contains("statecode") && ((OptionSetValue)childId.Attributes["statecode"]).Value == 0)
+                                            {
+                                                ids.Add(childId.Id);
+                                                childs.Add(childId);
+                                            }
                                         }
-                                        duplicateRecords.Add(new DuplicateRecords { MasterId = recordFound.Id, ChildIds = ids, ChildEntity = childRecords, MasterEntity = recordFound });
+                                        duplicateRecords.Add(new DuplicateRecords { MasterId = recordFound.Id, ChildIds = ids, ChildEntity = childs, MasterEntity = recordFound });
                                     }
                                 }
                             }
-                            #endregion # Sort Master and Child #
-                            progressCounter++;
                         }
+                        #endregion # Sort Master and Child #
+
+                        progressCounter++;
                     }
                     #endregion Duplicate Collection #
                     progressCounter = 0;
                     bw.ReportProgress(1, "Duplicate merge started........");
+
                     #region # Merge #
                     for (int i = 0; i < duplicateRecords.Count(); i++)
                     {
-                        bw.ReportProgress(progressCounter * 100 / ApplicationSetting.DuplicateCollection.Entities.Count(), string.Concat("Duplicate merge started........"));
+                        bw.ReportProgress(progressCounter * 100 / ApplicationSetting.DuplicateRecords.Count(), string.Concat("Duplicate merge started........"));
                         DuplicateRecords duplicate = duplicateRecords[i];
                         MergeRecords(duplicate.MasterEntity, duplicate.ChildEntity);
                         progressCounter++;
@@ -684,20 +523,6 @@ namespace CRMConsultants.DuplicateDetectionReport
 
                     this.Invoke(new Action(() => { MessageBox.Show(this, "Duplicate merge completed."); }));
                     #endregion # Merge #
-
-                    #region # Delete Jobs#
-                    if (cbDeleteJob.Checked)
-                    {
-                        progressCounter = 0;
-                        bw.ReportProgress(1, "Duplicate Detection job deletion started........");
-                        foreach (var id in ApplicationSetting.JobId)
-                        {
-                            DeleteJob(id, "asyncoperation");
-                            progressCounter++;
-                        }
-                        bw.ReportProgress(100, "Duplicate Detection job deletion completed........");
-                    }
-                    #endregion # Delete Jobs#
                 },
                 PostWorkCallBack = evt =>
                 {
@@ -751,7 +576,7 @@ namespace CRMConsultants.DuplicateDetectionReport
             }
         }
 
-        private bool DoesItContain(List<DuplicateRecords> duplicateRecords, Guid id)
+        private bool DoesItContain(List<DuplicateRecords> duplicateRecords, Guid id )
         {
             bool isFound = false;
             if (duplicateRecords != null && duplicateRecords.Count > 0)
@@ -769,46 +594,6 @@ namespace CRMConsultants.DuplicateDetectionReport
                 }
             }
             return isFound;
-        }
-
-        private List<Entity> RemoveDuplicates(List<DuplicateRecords> duplicateRecords, List<Entity> tempRecords)
-        {
-            List<Entity> recs = new List<Entity>();
-            recs = tempRecords;
-            if (duplicateRecords != null && duplicateRecords.Count > 0)
-            {
-                //var masterId = duplicateRecords.Where(dup1 => tempRecords.Any(dup2 => dup2.Id != dup1.MasterId));
-                //if (masterId != null && masterId.Count() > 0)
-                //    recs.AddRange(masterId);
-
-
-                //var masterId = duplicateRecords.Where(dup1 => tempRecords.Any(dup2 => dup2.Id != dup1.MasterId));
-                //var childId = duplicateRecords.Where(dup => dup.ChildIds.Any(u => u == id));
-
-                //if (childId != null && childId.Count() > 0)
-                //    isFound = true;
-
-                for (int cntr = 0; cntr < tempRecords.Count; cntr++)
-                {
-                    var temp = tempRecords[cntr];
-
-                    var masterId = duplicateRecords.Where(dup => dup.MasterId.Equals(temp.Id));
-                    if (masterId != null && masterId.Count() > 0)
-                    {
-                        recs.Remove(temp);
-                    }
-                    var childId = duplicateRecords.Where(dup => dup.ChildIds.Any(u => u == temp.Id));
-
-                    if (childId != null && childId.Count() > 0)
-                    {
-                        foreach (var item in childId)
-                        {
-                            recs.Remove(item.ChildEntity.FirstOrDefault());
-                        }
-                    }
-                }
-            }
-            return recs;
         }
 
         private void UpdateJobStatus(Guid jobId)
@@ -836,6 +621,7 @@ namespace CRMConsultants.DuplicateDetectionReport
         {
             ExecuteMethod(LoadEntities);
         }
+
         public void SaveStreamToFile(string fileFullPath, Stream stream)
         {
             if (stream.Length == 0) return;
@@ -1008,6 +794,7 @@ namespace CRMConsultants.DuplicateDetectionReport
 
                         entityColl = GetDuplicateRecords(jobId);
                         ApplicationSetting.DuplicateCollection = new EntityCollection();
+                        ApplicationSetting.DuplicateRecords = new List<DuplicateRecords>();
 
                         if (entityColl != null && entityColl.Entities.Count > 0)
                         {
@@ -1016,70 +803,102 @@ namespace CRMConsultants.DuplicateDetectionReport
                                 btnMergeDuplicates.Enabled = true;
                                 rbCreatedOn.Enabled = true;
                                 rbModifiedOn.Enabled = true;
-                                rbAsc.Enabled = true;
-                                rbDes.Enabled = true;
                                 rbNoOfActivities.Enabled = true;
-                                rbMost.Enabled = true;
-                                rbLeast.Enabled = true;
-                               rbnNoOfCompletedFields.Enabled = true;
+                                rbnNoOfCompletedFields.Enabled = true;
                             }));
 
                             excell_app = new CreateExcelDoc(txtFilePath.Text.Trim());
+
                             GenerateHeader(excell_app);
 
                             bw.ReportProgress(100, string.Concat("Duplicate ", ApplicationSetting.SelectedEntity.DisplayName, " found (", entityColl.Entities.Count, ")"));
 
                             int row = 2;
 
-                            bw.ReportProgress(0, "Generating duplicate report........");
+                            bw.ReportProgress(0, "Retrieving duplicate records........");
 
                             IEnumerable<System.Linq.IGrouping<object, Entity>> entityCollGroupBy = entityColl.Entities.GroupBy(ent => ent.Attributes[ApplicationSetting.SelectedEntity.PrimaryIdAttribute]);
-
+                            List<Guid> chidList = new List<Guid>();
                             foreach (IEnumerable<Entity> elements in entityCollGroupBy)
                             {
-                                int column = 1;
                                 foreach (Entity entity in elements)
                                 {
                                     bw.ReportProgress(progressCounter * 100 / entityColl.Entities.Count(), string.Concat("Generating duplicate report........"));
                                     if (entity != null)
                                     {
-                                        int countOfCompletedFields = 0;
-                                        foreach (string attributeName in ApplicationSetting.AttributesSchemaList)
+                                        if (!DoesItContain(ApplicationSetting.DuplicateRecords, entity.Id))
                                         {
-                                            if (entity.Attributes.Contains(attributeName) && entity.Attributes[attributeName] != null)
+                                            DuplicateRecords rec = new DuplicateRecords();
+                                            rec.MasterId = entity.Id;
+                                            if (elements != null && elements.Count() > 0)
                                             {
-                                                countOfCompletedFields++;
-                                                if (ApplicationSetting.AttributesToDisplay.Contains(attributeName))
+                                                var activityGroupBy = elements.Where(cnt => cnt.Attributes.Contains("Activities.activitytypecode") && cnt.Attributes["Activities.activitytypecode"] != null);
+                                                entity.Attributes["ActivitiesCount"] = activityGroupBy != null ? activityGroupBy.Count() : 0;
+                                                
+                                            }
+                                            else
+                                            {
+                                                entity.Attributes["ActivitiesCount"] = 0;
+                                            }
+                                            rec.MasterEntity = entity;
+
+                                            Entity duplicateTemp = new Entity(ApplicationSetting.SelectedEntity.LogicalName);
+                                            duplicateTemp.Id = entity.Id;
+                                            var re = new RetrieveDuplicatesRequest
+                                            {
+                                                BusinessEntity = duplicateTemp,
+                                                MatchingEntityName = duplicateTemp.LogicalName,
+                                                PagingInfo = new PagingInfo() { PageNumber = 1, Count = 500 }
+                                            };
+
+                                            var response = (RetrieveDuplicatesResponse)Service.Execute(re);
+                                            if (response != null && response.DuplicateCollection != null)
+                                            {
+                                                List<Entity> childRecords = new List<Entity>();
+                                                rec.ChildIds = new List<Guid>();
+                                                foreach (Entity duplicate in response.DuplicateCollection.Entities)
                                                 {
-                                                    var attributeObj = entity.Attributes[attributeName];
-                                                    string type = attributeObj.GetType().Name;
-                                                    string attributeValue = GetAttributeValue(entity, attributeName, attributeObj, type);
-                                                    excell_app.addData(row, column, attributeValue, "A" + row, "B" + row);
-                                                }
+                                                    if (!DoesItContain(ApplicationSetting.DuplicateRecords, duplicate.Id))
+                                                    {
+                                                        rec.ChildIds.Add(duplicate.Id);
+                                                        chidList.Add(duplicate.Id);
+                                                        childRecords.Add(duplicate);
+                                                    }
+                                                }                                              
+                                                rec.ChildEntity = childRecords;
                                             }
-                                            if (ApplicationSetting.AttributesToDisplay.Contains(attributeName))
-                                            {
-                                                column++;
-                                            }
+                                            ApplicationSetting.DuplicateRecords.Add(rec);
                                         }
-                                        #region # Activities Count#
-                                        var activityGroupBy = elements.Where(cnt => cnt.Attributes.Contains("Activities.activitytypecode") && cnt.Attributes["Activities.activitytypecode"] != null);
-                                        int countOfActivities = activityGroupBy != null ? activityGroupBy.Count() : 0;
-                                        entity.Attributes["ActivitiesCount"] = countOfActivities;
-                                        entity.Attributes["CountOfCompletedFields"] = countOfCompletedFields;
-                                        ApplicationSetting.DuplicateCollection.Entities.Add(entity);
-                                        excell_app.addData(row, column, Convert.ToString(countOfActivities), "A" + row, "B" + row);
-                                        excell_app.addData(row, column + 1, Convert.ToString(countOfCompletedFields), "A" + row, "B" + row);
+                                        progressCounter++;
 
-                                        row++;
                                         break;// Break every time...Row is repeating for every activity
-                                        #endregion # Activities Count#
                                     }
+                                }
+                            }
 
+                            bw.ReportProgress(0, "Generating Duplicate report........");
+                            progressCounter = 0;
+                            List<DuplicateRecords> DuplicateRecords = ApplicationSetting.DuplicateRecords;
+                            EntityCollection childs = new EntityCollection();
+                            if (chidList != null && chidList.Count() > 0)
+                            {
+                                childs = GetRelatedDuplicateRecords(chidList.ToArray());
+                            }
+
+                            for (int indexofRecord = 0; indexofRecord < DuplicateRecords.Count(); indexofRecord++)
+                            {
+                                bw.ReportProgress(progressCounter * 100 / DuplicateRecords.Count(), string.Concat("Generating Duplicate report........"));
+                                ApplicationSetting.DuplicateRecords[indexofRecord].MasterEntity = GetExcelPopulated(DuplicateRecords[indexofRecord].MasterEntity, 1, excell_app, ref row, null, Convert.ToInt32(DuplicateRecords[indexofRecord].MasterEntity.Attributes["ActivitiesCount"]), true);
+                                for (int indexOfChild = 0; indexOfChild < DuplicateRecords[indexofRecord].ChildEntity.Count(); indexOfChild++)
+                                {
+                                    if (DuplicateRecords[indexofRecord].ChildEntity.ElementAt(indexOfChild) != null)
+                                    {
+                                        var activities = childs != null && childs.Entities.Count > 0 ? (childs.Entities.Where(i => ((EntityReference)i.Attributes["regardingobjectid"]).Id == DuplicateRecords[indexofRecord].ChildEntity.ElementAt(indexOfChild).Id).Count()) : 0;
+                                        ApplicationSetting.DuplicateRecords[indexofRecord].ChildEntity[indexOfChild] = GetExcelPopulated(DuplicateRecords[indexofRecord].ChildEntity.ElementAt(indexOfChild), 1, excell_app, ref row, null, activities, false);
+                                    }
                                 }
                                 progressCounter++;
                             }
-
                             bw.ReportProgress(100, "Duplicate detection completed........");
 
                             excell_app.worksheet.SaveAs(txtFilePath.Text);
@@ -1088,6 +907,8 @@ namespace CRMConsultants.DuplicateDetectionReport
 
                             this.Invoke(new Action(() =>
                             {
+                                excell_app.app.DisplayAlerts = true;        
+                                excell_app.app.ScreenUpdating = true;
                                 excell_app.app.Visible = true;
                             }));
 
@@ -1100,6 +921,10 @@ namespace CRMConsultants.DuplicateDetectionReport
                         {
                             this.Invoke(new Action(() => { MessageBox.Show(this, "No Duplicates found."); }));
                         }
+
+                        cmbDuplicateDetectionJobs.DataSource = null;
+                        // Bind the Jobs
+                        GetExistingJobs();
                     }
                 },
                 PostWorkCallBack = evt =>
@@ -1111,6 +936,47 @@ namespace CRMConsultants.DuplicateDetectionReport
                 },
                 ProgressChanged = evt => { SetWorkingMessage(string.Format("{0}%\r\n{1}", evt.ProgressPercentage, evt.UserState)); }
             });
+        }
+
+        private Entity GetExcelPopulated(Entity entity, int column, CreateExcelDoc excell_app, ref int row, IEnumerable<Entity> elements, int countActivities, bool isParent)
+        {
+            int countOfCompletedFields = 0;
+            foreach (string attributeName in ApplicationSetting.AttributesSchemaList)
+            {
+                if (entity.Attributes.Contains(attributeName) && entity.Attributes[attributeName] != null)
+                {
+                    countOfCompletedFields++;
+                    if (ApplicationSetting.AttributesToDisplay.Contains(attributeName))
+                    {
+                        var attributeObj = entity.Attributes[attributeName];
+                        string type = attributeObj.GetType().Name;
+                        string attributeValue = GetAttributeValue(entity, attributeName, attributeObj, type);
+                        excell_app.addData(row, column, attributeValue, "A" + row, "B" + row);
+                    }
+                }
+                if (ApplicationSetting.AttributesToDisplay.Contains(attributeName))
+                {
+                    column++;
+                }
+            }
+            #region # Activities Count#
+
+            IEnumerable<Entity> activityGroupBy = null;
+
+            if (elements != null && elements.Count() > 0)
+                activityGroupBy = elements.Where(cnt => cnt.Attributes.Contains("Activities.activitytypecode") && cnt.Attributes["Activities.activitytypecode"] != null);
+
+            int countOfActivities = activityGroupBy != null ? activityGroupBy.Count() : countActivities;
+
+            if(!isParent)
+            entity.Attributes["ActivitiesCount"] = countOfActivities;
+
+            entity.Attributes["CountOfCompletedFields"] = countOfCompletedFields;
+            excell_app.addData(row, column, Convert.ToString(countOfActivities), "A" + row, "B" + row);
+            excell_app.addData(row, column + 1, Convert.ToString(countOfCompletedFields), "A" + row, "B" + row);
+            row++;
+            return entity;
+            #endregion # Activities Count#
         }
 
         private void btnBrowse_Click(object sender, EventArgs e)
@@ -1152,252 +1018,7 @@ namespace CRMConsultants.DuplicateDetectionReport
         private void btnMergeDuplicates_Click(object sender, EventArgs e)
         {
             MergeOperation();
-
-            #region # Commented #
-            //if (ApplicationSetting.AttributesSchemaList == null || ApplicationSetting.AttributesSchemaList.Count <= 0)
-            //{
-            //    MessageBox.Show(this, "Please select Attributes.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            //    return;
-            //}
-
-            //WorkAsync(new WorkAsyncInfo
-            //{
-            //    Message = string.Concat("Duplicate ", ApplicationSetting.SelectedEntity.DisplayName, " sorting started......"),
-            //    AsyncArgument = null,
-            //    Work = (bw, evt) =>
-            //    {
-            //        EntityCollection duplCriterias = GetDuplicateCriterias();
-            //        List<DuplicateRecords> duplicateRecords = new List<DuplicateRecords>();
-            //        IEnumerable<System.Linq.IGrouping<object, Entity>> duplCriteriasGroupBy = duplCriterias.Entities.GroupBy(ent => ent.Attributes["regardingobjectid"]);
-
-            //        foreach (Entity record in ApplicationSetting.DuplicateCollection.Entities)
-            //        {
-            //            bw.ReportProgress(progressCounter * 100 / ApplicationSetting.DuplicateCollection.Entities.Count(), string.Concat("Generating duplicate report........"));
-            //            foreach (IEnumerable<Entity> elements in duplCriteriasGroupBy)
-            //            {
-            //                if (!DoesItContain(duplicateRecords, record.Id))
-            //                {
-            //                    IEnumerable<Entity> tempRecords = null;
-            //                    foreach (var entity in elements)
-            //                    {
-            //                        if (entity != null)
-            //                        {
-            //                            #region 
-            //                            int operatorCode = -1;
-            //                            int noOfCharacters = -1;
-            //                            bool ignoreBlankValue = false;
-            //                            string baseAttribueName = "";
-            //                            #endregion
-
-            //                            if (entity.Attributes.Contains("operatorcode") && entity.Attributes["operatorcode"] != null)
-            //                            {
-            //                                operatorCode = ((OptionSetValue)entity.Attributes["operatorcode"]).Value;
-            //                            }
-            //                            if (entity.Attributes.Contains("operatorparam") && entity.Attributes["operatorparam"] != null)
-            //                            {
-            //                                noOfCharacters = Convert.ToInt32(entity.Attributes["operatorparam"]);
-            //                            }
-            //                            if (entity.Attributes.Contains("ignoreblankvalues") && entity.Attributes["ignoreblankvalues"] != null)
-            //                            {
-            //                                ignoreBlankValue = (bool)entity.Attributes["ignoreblankvalues"];
-            //                            }
-            //                            if (entity.Attributes.Contains("baseattributename") && entity.Attributes["baseattributename"] != null)
-            //                            {
-            //                                baseAttribueName = Convert.ToString(entity.Attributes["baseattributename"]);
-            //                            }
-            //                            var attrValue = record.Attributes.Contains(baseAttribueName) && record.Attributes[baseAttribueName] != null ? record.Attributes[baseAttribueName] : null;
-            //                            string charactersToCompare = "";
-            //                            switch (operatorCode)
-            //                            {
-            //                                case 0:
-            //                                    GetRecordsAsPerType(record, baseAttribueName, ref tempRecords, attrValue);
-            //                                    break;
-            //                                case 1:
-            //                                    if (attrValue != null)
-            //                                    {
-            //                                        charactersToCompare = attrValue.ToString().Substring(0, noOfCharacters);
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName].ToString().Contains(charactersToCompare) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName].ToString().Contains(charactersToCompare) && record.Id != ent.Id);
-            //                                    }
-            //                                    else
-            //                                    {
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                    }
-            //                                    break;
-            //                                case 2:
-            //                                    if (attrValue != null)
-            //                                    {
-            //                                        charactersToCompare = attrValue.ToString().Substring(attrValue.ToString().Length - noOfCharacters);
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName].ToString().Contains(charactersToCompare) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName].ToString().Contains(charactersToCompare) && record.Id != ent.Id);
-            //                                    }
-            //                                    else
-            //                                    {
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                    }
-            //                                    break;
-            //                                case 3:
-            //                                    if (attrValue != null)
-            //                                    {
-            //                                        DateTime date = Convert.ToDateTime(attrValue);
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && Convert.ToDateTime(ent.Attributes[baseAttribueName]).Date.Equals(date.Date) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && Convert.ToDateTime(ent.Attributes[baseAttribueName]).Date.Equals(date.Date) && record.Id != ent.Id);
-            //                                    }
-            //                                    else
-            //                                    {
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                    }
-            //                                    break;
-            //                                case 4:
-
-            //                                    if (attrValue != null)
-            //                                    {
-            //                                        DateTime dateTime = Convert.ToDateTime(attrValue);
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && Convert.ToDateTime(ent.Attributes[baseAttribueName]).Equals(dateTime) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && Convert.ToDateTime(ent.Attributes[baseAttribueName]).Equals(dateTime) && record.Id != ent.Id);
-            //                                    }
-            //                                    else
-            //                                    {
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                    }
-            //                                    break;
-            //                                case 5:
-            //                                    string pickListLabel = record.Attributes.Contains(baseAttribueName) && record.Attributes[baseAttribueName] != null ? record.FormattedValues[baseAttribueName] : null;
-            //                                    if (attrValue != null)
-            //                                    {
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && Convert.ToString(ent.FormattedValues[baseAttribueName]).Equals(pickListLabel) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && Convert.ToString(ent.FormattedValues[baseAttribueName]).Equals(pickListLabel) && record.Id != ent.Id);
-            //                                    }
-            //                                    else
-            //                                    {
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                    }
-            //                                    break;
-            //                                case 6:
-            //                                    int pickListvalue = record.Attributes.Contains(baseAttribueName) && record.Attributes[baseAttribueName] != null ? ((OptionSetValue)record.Attributes[baseAttribueName]).Value : -1;
-
-            //                                    if (pickListvalue != -1)
-            //                                    {
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => ent.Attributes.Contains(baseAttribueName) && ((OptionSetValue)(ent.Attributes[baseAttribueName])).Value.Equals(pickListvalue) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => ent.Attributes.Contains(baseAttribueName) && ((OptionSetValue)(ent.Attributes[baseAttribueName])).Value.Equals(pickListvalue) && record.Id != ent.Id);
-            //                                    }
-            //                                    else
-            //                                    {
-            //                                        if (tempRecords == null)
-            //                                            tempRecords = ApplicationSetting.DuplicateCollection.Entities.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                        else
-            //                                            tempRecords = tempRecords.Where(ent => !ent.Attributes.Contains(baseAttribueName) || (ent.Attributes.Contains(baseAttribueName) && ent.Attributes[baseAttribueName] == null) && record.Id != ent.Id);
-            //                                    }
-            //                                    break;
-            //                            }
-            //                            //DuplicateRuleCondition yes OperatorCode Picklist    0   Exact Match
-            //                            //DuplicateRuleCondition yes OperatorCode Picklist    1   Same First Characters
-            //                            //DuplicateRuleCondition  yes OperatorCode    Picklist    2   Same Last Characters
-            //                            //DuplicateRuleCondition  yes OperatorCode    Picklist    3   Same Date
-            //                            //DuplicateRuleCondition yes OperatorCode Picklist    4   Same Date and Time
-            //                            //DuplicateRuleCondition yes OperatorCode Picklist    5   Exact Match (Pick List Label)
-            //                            //DuplicateRuleCondition yes OperatorCode Picklist    6   Exact Match (Pick List Value)
-            //                        }
-            //                    }
-            //                    #region # Sort MAster and Child #
-            //                    if (tempRecords != null && tempRecords.Count() > 0)
-            //                    {
-            //                        List<Entity> allDuplicates = new List<Entity>();
-            //                        allDuplicates.Add(record);
-            //                        allDuplicates.AddRange(tempRecords);
-
-            //                        allDuplicates = RemoveDuplicates(duplicateRecords, allDuplicates);
-            //                        IEnumerable<Entity> sortedRecord = null;
-
-            //                        if (allDuplicates != null && allDuplicates.Count() > 0)
-            //                        {
-            //                            if (rbCreatedOn.Enabled)
-            //                            {
-            //                                DateTime dateSortedFound = rbAsc.Enabled ? allDuplicates.Min(c => (DateTime)c.Attributes["createdon"]) : allDuplicates.Max(c => (DateTime)c.Attributes["createdon"]);
-            //                                sortedRecord = allDuplicates.Where(c => (DateTime)c.Attributes["createdon"] == dateSortedFound);
-            //                            }
-            //                            else
-            //                            {
-            //                                DateTime dateSortedFound = rbAsc.Enabled ? allDuplicates.Min(c => (DateTime)c.Attributes["modifiedon"]) : allDuplicates.Max(c => (DateTime)c.Attributes["modifiedon"]);
-            //                                sortedRecord = allDuplicates.Where(c => (DateTime)c.Attributes["modifiedon"] == dateSortedFound);
-            //                            }
-
-            //                            if (sortedRecord != null && sortedRecord.Count() > 0)
-            //                            {
-            //                                Entity recordFound = sortedRecord.FirstOrDefault();
-            //                                IEnumerable<Entity> childRecords = allDuplicates.Where(c => c.Id != recordFound.Id);
-
-            //                                if (childRecords != null && childRecords.Count() > 0)
-            //                                {
-            //                                    List<Guid> ids = new List<Guid>();
-            //                                    foreach (var childId in childRecords)
-            //                                    {
-            //                                        ids.Add(childId.Id);
-            //                                    }
-            //                                    duplicateRecords.Add(new DuplicateRecords { MasterId = recordFound.Id, ChildIds = ids, ChildEntity = childRecords, MasterEntity = recordFound });
-            //                                }
-            //                            }
-            //                        }
-            //                    }
-            //                    #endregion # Sort MAster and Child #
-            //                }
-            //            }
-            //            progressCounter++;
-            //        }
-
-            //        progressCounter = 0;
-            //        #region # Merge #
-            //        for (int i = 0; i < duplicateRecords.Count(); i++)
-            //        {
-            //            bw.ReportProgress(progressCounter * 100 / ApplicationSetting.DuplicateCollection.Entities.Count(), string.Concat("Generating duplicate report........"));
-            //            DuplicateRecords duplicate = duplicateRecords[i];
-            //            MergeRecords(duplicate.MasterEntity, duplicate.ChildEntity);
-            //            progressCounter++;
-            //        }
-            //        bw.ReportProgress(100, "Duplicate merge completed........");
-
-            //        this.Invoke(new Action(() => { MessageBox.Show(this, "Duplicate merge completed."); }));
-            //        #endregion # Merge #
-            //    },
-            //    PostWorkCallBack = evt =>
-            //    {
-            //        if (evt.Error != null)
-            //        {
-            //            this.Invoke(new Action(() => { MessageBox.Show(this, "An error occured " + evt.Error.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }));
-            //        }
-            //    },
-            //    ProgressChanged = evt => { SetWorkingMessage(string.Format("{0}%\r\n{1}", evt.ProgressPercentage, evt.UserState)); }
-            //});
-            #endregion # Commented #
         }
-
         #endregion # Event Handlers #
     }
 }

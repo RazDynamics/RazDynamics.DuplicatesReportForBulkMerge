@@ -120,6 +120,27 @@
   <metadata name="toolStripMenu.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>227, 56</value>
   </metadata>
+  <metadata name="toolStrip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>357, 56</value>
+  </metadata>
+  <data name="textBox1.Text" xml:space="preserve">
+    <value>Duplicate Detection Report &amp; Bulk Merge Notes:
+
+Duplicate Detection Report:
+This version of the Duplicate Detection Report will generate an excel report of No. of completed fields, No. of Activities for each duplicate record to help you identify which record you want to keep as well as from a completed duplicate detection job and allow you to select additional fields to be included in Your Excel Report.
+
+Bulk Merge Notes:
+This Version of the Bulk Merge tool allows you to define a criteria to bulk merge your duplicate records. The Next version we I will endeavor to allow you to select more advanced criteria to bulk merge records intelligently.
+There is currently a limit of 5000 records as duplicate detection job can a detect maximum 5000 duplicates.
+This is the First Version of this tool, I Would Like your Feedback on how this tool can be improved to better suite your needs, feel free to reach at any time.
+
+Your Sincerely,
+Raz Dynamics
+https://community.dynamics.com/members/razwan-crmuk</value>
+  </data>
+  <metadata name="toolStripMenu.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>227, 56</value>
+  </metadata>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
   <data name="tsbClose.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
@@ -155,16 +176,13 @@
         CLoAFyYEoAZ4yYNTIyglxtrtwZYS8boAGYAEwDJEAqwGkIYV0gCcVG/qzOI4twAAAABJRU5ErkJggg==
 </value>
   </data>
-  <metadata name="toolStrip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-    <value>357, 56</value>
-  </metadata>
   <data name="btnMergeDuplicates.Image" type="System.Drawing.Bitmap, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
     <value>
         iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8
-        YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAACPSURBVDhPvVKBDYAgDOMET/EjSIC//Eg/8AT9ADeyxYW4
-        OA3apLGytbJF1x0554JstRmfBKSUxlq0QAbEGFd+11hNEnA4YwG+GpCgN26+ItlOkKmEEHbU3vuBSjra
-        1CfsE6CBxwHiHmAawzgSELBgAO8CnhPuhkLvbyCb0CyNsqZCNrGGoHc/ldRm/BDg3AGQieUKE0BquQAA
-        AABJRU5ErkJggg==
+        YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAACQSURBVDhPvVKBCYAwDNsJnuJDY8K2v/xIP/AE/UDb0WIZ
+        FqtMA8G4NnEtuubIOe/IWpvxSUBKqS9FC2RAjHHhd43FJAGHExbgqwMS9MrNVyTbCTLt3vsNdQiho5KO
+        OvUJ2wRo4HGAuAeYxjCOBATMGMC7gOeIu6HQ+xvIJjRLo6ypkE2sIejdTyW1GT8EOHcAbqXk+KgiOzYA
+        AAAASUVORK5CYII=
 </value>
   </data>
   <metadata name="$this.TrayHeight" type="System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">

@@ -33,6 +33,8 @@ namespace CRMConsultants.DuplicateDetectionReport
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(DuplicateDetectionReportTool));
             this.tcReport = new System.Windows.Forms.TabControl();
+            this.tabPage1 = new System.Windows.Forms.TabPage();
+            this.textBox1 = new System.Windows.Forms.TextBox();
             this.tbDuplicateDetection = new System.Windows.Forms.TabPage();
             this.gbDuplicateDetectionJob = new System.Windows.Forms.GroupBox();
             this.cmbDuplicateDetectionJobs = new System.Windows.Forms.ComboBox();
@@ -55,24 +57,18 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.tsbGenerate = new System.Windows.Forms.ToolStripButton();
             this.tbMergeDuplicates = new System.Windows.Forms.TabPage();
-            this.groupBox4 = new System.Windows.Forms.GroupBox();
-            this.rbLeast = new System.Windows.Forms.RadioButton();
-            this.rbMost = new System.Windows.Forms.RadioButton();
-            this.groupBox5 = new System.Windows.Forms.GroupBox();
-            this.rbnNoOfCompletedFields = new System.Windows.Forms.RadioButton();
-            this.rbNoOfActivities = new System.Windows.Forms.RadioButton();
-            this.cbDeleteJob = new System.Windows.Forms.CheckBox();
-            this.gbOrder = new System.Windows.Forms.GroupBox();
-            this.rbDes = new System.Windows.Forms.RadioButton();
-            this.rbAsc = new System.Windows.Forms.RadioButton();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.label1 = new System.Windows.Forms.Label();
+            this.rbnNoOfCompletedFields = new System.Windows.Forms.RadioButton();
             this.rbModifiedOn = new System.Windows.Forms.RadioButton();
+            this.rbNoOfActivities = new System.Windows.Forms.RadioButton();
             this.rbCreatedOn = new System.Windows.Forms.RadioButton();
             this.toolStrip1 = new System.Windows.Forms.ToolStrip();
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripSeparator4 = new System.Windows.Forms.ToolStripSeparator();
             this.btnMergeDuplicates = new System.Windows.Forms.ToolStripButton();
             this.tcReport.SuspendLayout();
+            this.tabPage1.SuspendLayout();
             this.tbDuplicateDetection.SuspendLayout();
             this.gbDuplicateDetectionJob.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -80,15 +76,13 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.groupBox1.SuspendLayout();
             this.toolStripMenu.SuspendLayout();
             this.tbMergeDuplicates.SuspendLayout();
-            this.groupBox4.SuspendLayout();
-            this.groupBox5.SuspendLayout();
-            this.gbOrder.SuspendLayout();
             this.groupBox3.SuspendLayout();
             this.toolStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // tcReport
             // 
+            this.tcReport.Controls.Add(this.tabPage1);
             this.tcReport.Controls.Add(this.tbDuplicateDetection);
             this.tcReport.Controls.Add(this.tbMergeDuplicates);
             this.tcReport.Location = new System.Drawing.Point(3, 12);
@@ -96,6 +90,28 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.tcReport.SelectedIndex = 0;
             this.tcReport.Size = new System.Drawing.Size(743, 514);
             this.tcReport.TabIndex = 1;
+            // 
+            // tabPage1
+            // 
+            this.tabPage1.Controls.Add(this.textBox1);
+            this.tabPage1.Location = new System.Drawing.Point(4, 22);
+            this.tabPage1.Name = "tabPage1";
+            this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPage1.Size = new System.Drawing.Size(735, 488);
+            this.tabPage1.TabIndex = 2;
+            this.tabPage1.Text = "Instruction ";
+            this.tabPage1.UseVisualStyleBackColor = true;
+            // 
+            // textBox1
+            // 
+            this.textBox1.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.textBox1.Enabled = false;
+            this.textBox1.Location = new System.Drawing.Point(16, 35);
+            this.textBox1.Multiline = true;
+            this.textBox1.Name = "textBox1";
+            this.textBox1.Size = new System.Drawing.Size(676, 246);
+            this.textBox1.TabIndex = 0;
+            this.textBox1.Text = resources.GetString("textBox1.Text");
             // 
             // tbDuplicateDetection
             // 
@@ -109,7 +125,7 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.tbDuplicateDetection.Padding = new System.Windows.Forms.Padding(3);
             this.tbDuplicateDetection.Size = new System.Drawing.Size(735, 488);
             this.tbDuplicateDetection.TabIndex = 0;
-            this.tbDuplicateDetection.Text = "Duplicate Detection report";
+            this.tbDuplicateDetection.Text = "Duplicate Detection Report";
             this.tbDuplicateDetection.UseVisualStyleBackColor = true;
             // 
             // gbDuplicateDetectionJob
@@ -140,7 +156,7 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.groupBox2.Controls.Add(this.btnCheckAll);
             this.groupBox2.Location = new System.Drawing.Point(9, 182);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(495, 302);
+            this.groupBox2.Size = new System.Drawing.Size(495, 300);
             this.groupBox2.TabIndex = 97;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Attributes";
@@ -158,7 +174,7 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.lvAttributes.GridLines = true;
             this.lvAttributes.Location = new System.Drawing.Point(6, 48);
             this.lvAttributes.Name = "lvAttributes";
-            this.lvAttributes.Size = new System.Drawing.Size(468, 230);
+            this.lvAttributes.Size = new System.Drawing.Size(468, 228);
             this.lvAttributes.Sorting = System.Windows.Forms.SortOrder.Ascending;
             this.lvAttributes.TabIndex = 85;
             this.lvAttributes.UseCompatibleStateImageBehavior = false;
@@ -313,10 +329,6 @@ namespace CRMConsultants.DuplicateDetectionReport
             // 
             // tbMergeDuplicates
             // 
-            this.tbMergeDuplicates.Controls.Add(this.groupBox4);
-            this.tbMergeDuplicates.Controls.Add(this.groupBox5);
-            this.tbMergeDuplicates.Controls.Add(this.cbDeleteJob);
-            this.tbMergeDuplicates.Controls.Add(this.gbOrder);
             this.tbMergeDuplicates.Controls.Add(this.groupBox3);
             this.tbMergeDuplicates.Controls.Add(this.toolStrip1);
             this.tbMergeDuplicates.Location = new System.Drawing.Point(4, 22);
@@ -327,142 +339,62 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.tbMergeDuplicates.Text = "Merge Duplicates";
             this.tbMergeDuplicates.UseVisualStyleBackColor = true;
             // 
-            // groupBox4
+            // groupBox3
             // 
-            this.groupBox4.Controls.Add(this.rbLeast);
-            this.groupBox4.Controls.Add(this.rbMost);
-            this.groupBox4.Location = new System.Drawing.Point(370, 150);
-            this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Size = new System.Drawing.Size(301, 79);
-            this.groupBox4.TabIndex = 102;
-            this.groupBox4.TabStop = false;
-            this.groupBox4.Text = "Order";
+            this.groupBox3.Controls.Add(this.label1);
+            this.groupBox3.Controls.Add(this.rbnNoOfCompletedFields);
+            this.groupBox3.Controls.Add(this.rbModifiedOn);
+            this.groupBox3.Controls.Add(this.rbNoOfActivities);
+            this.groupBox3.Controls.Add(this.rbCreatedOn);
+            this.groupBox3.Location = new System.Drawing.Point(15, 49);
+            this.groupBox3.Name = "groupBox3";
+            this.groupBox3.Size = new System.Drawing.Size(693, 304);
+            this.groupBox3.TabIndex = 98;
+            this.groupBox3.TabStop = false;
+            this.groupBox3.Text = "Criteria to decide Master";
             // 
-            // rbLeast
+            // label1
             // 
-            this.rbLeast.AutoSize = true;
-            this.rbLeast.Enabled = false;
-            this.rbLeast.Location = new System.Drawing.Point(183, 37);
-            this.rbLeast.Name = "rbLeast";
-            this.rbLeast.Size = new System.Drawing.Size(51, 17);
-            this.rbLeast.TabIndex = 1;
-            this.rbLeast.Text = "Least";
-            this.rbLeast.UseVisualStyleBackColor = true;
-            // 
-            // rbMost
-            // 
-            this.rbMost.AutoSize = true;
-            this.rbMost.Checked = true;
-            this.rbMost.Enabled = false;
-            this.rbMost.Location = new System.Drawing.Point(33, 37);
-            this.rbMost.Name = "rbMost";
-            this.rbMost.Size = new System.Drawing.Size(48, 17);
-            this.rbMost.TabIndex = 0;
-            this.rbMost.TabStop = true;
-            this.rbMost.Text = "Most";
-            this.rbMost.UseVisualStyleBackColor = true;
-            // 
-            // groupBox5
-            // 
-            this.groupBox5.Controls.Add(this.rbnNoOfCompletedFields);
-            this.groupBox5.Controls.Add(this.rbNoOfActivities);
-            this.groupBox5.Location = new System.Drawing.Point(17, 150);
-            this.groupBox5.Name = "groupBox5";
-            this.groupBox5.Size = new System.Drawing.Size(331, 79);
-            this.groupBox5.TabIndex = 101;
-            this.groupBox5.TabStop = false;
-            this.groupBox5.Text = "Criteria to decide Master";
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(16, 196);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(564, 13);
+            this.label1.TabIndex = 2;
+            this.label1.Text = "Note: Current version only allows to select 1 criteria. Next version will allow t" +
+    "o select multiple criteria for defining Master.";
             // 
             // rbnNoOfCompletedFields
             // 
             this.rbnNoOfCompletedFields.AutoSize = true;
             this.rbnNoOfCompletedFields.Enabled = false;
-            this.rbnNoOfCompletedFields.Location = new System.Drawing.Point(183, 37);
+            this.rbnNoOfCompletedFields.Location = new System.Drawing.Point(33, 143);
             this.rbnNoOfCompletedFields.Name = "rbnNoOfCompletedFields";
-            this.rbnNoOfCompletedFields.Size = new System.Drawing.Size(135, 17);
+            this.rbnNoOfCompletedFields.Size = new System.Drawing.Size(180, 17);
             this.rbnNoOfCompletedFields.TabIndex = 1;
-            this.rbnNoOfCompletedFields.Text = "Count of Entered Fields";
+            this.rbnNoOfCompletedFields.Text = "Max Number of Completed Fields";
             this.rbnNoOfCompletedFields.UseVisualStyleBackColor = true;
-            // 
-            // rbNoOfActivities
-            // 
-            this.rbNoOfActivities.AutoSize = true;
-            this.rbNoOfActivities.Checked = true;
-            this.rbNoOfActivities.Enabled = false;
-            this.rbNoOfActivities.Location = new System.Drawing.Point(33, 37);
-            this.rbNoOfActivities.Name = "rbNoOfActivities";
-            this.rbNoOfActivities.Size = new System.Drawing.Size(110, 17);
-            this.rbNoOfActivities.TabIndex = 0;
-            this.rbNoOfActivities.TabStop = true;
-            this.rbNoOfActivities.Text = "Count of Activities";
-            this.rbNoOfActivities.UseVisualStyleBackColor = true;
-            // 
-            // cbDeleteJob
-            // 
-            this.cbDeleteJob.AutoSize = true;
-            this.cbDeleteJob.Location = new System.Drawing.Point(15, 268);
-            this.cbDeleteJob.Name = "cbDeleteJob";
-            this.cbDeleteJob.Size = new System.Drawing.Size(180, 17);
-            this.cbDeleteJob.TabIndex = 100;
-            this.cbDeleteJob.Text = "Delete Duplicate Detection Job?";
-            this.cbDeleteJob.UseVisualStyleBackColor = true;
-            // 
-            // gbOrder
-            // 
-            this.gbOrder.Controls.Add(this.rbDes);
-            this.gbOrder.Controls.Add(this.rbAsc);
-            this.gbOrder.Location = new System.Drawing.Point(370, 49);
-            this.gbOrder.Name = "gbOrder";
-            this.gbOrder.Size = new System.Drawing.Size(301, 79);
-            this.gbOrder.TabIndex = 99;
-            this.gbOrder.TabStop = false;
-            this.gbOrder.Text = "Order";
-            // 
-            // rbDes
-            // 
-            this.rbDes.AutoSize = true;
-            this.rbDes.Enabled = false;
-            this.rbDes.Location = new System.Drawing.Point(183, 37);
-            this.rbDes.Name = "rbDes";
-            this.rbDes.Size = new System.Drawing.Size(82, 17);
-            this.rbDes.TabIndex = 1;
-            this.rbDes.Text = "Descending";
-            this.rbDes.UseVisualStyleBackColor = true;
-            // 
-            // rbAsc
-            // 
-            this.rbAsc.AutoSize = true;
-            this.rbAsc.Checked = true;
-            this.rbAsc.Enabled = false;
-            this.rbAsc.Location = new System.Drawing.Point(33, 37);
-            this.rbAsc.Name = "rbAsc";
-            this.rbAsc.Size = new System.Drawing.Size(75, 17);
-            this.rbAsc.TabIndex = 0;
-            this.rbAsc.TabStop = true;
-            this.rbAsc.Text = "Ascending";
-            this.rbAsc.UseVisualStyleBackColor = true;
-            // 
-            // groupBox3
-            // 
-            this.groupBox3.Controls.Add(this.rbModifiedOn);
-            this.groupBox3.Controls.Add(this.rbCreatedOn);
-            this.groupBox3.Location = new System.Drawing.Point(15, 49);
-            this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(333, 79);
-            this.groupBox3.TabIndex = 98;
-            this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Criteria to decide Master";
             // 
             // rbModifiedOn
             // 
             this.rbModifiedOn.AutoSize = true;
             this.rbModifiedOn.Enabled = false;
-            this.rbModifiedOn.Location = new System.Drawing.Point(183, 37);
+            this.rbModifiedOn.Location = new System.Drawing.Point(33, 70);
             this.rbModifiedOn.Name = "rbModifiedOn";
-            this.rbModifiedOn.Size = new System.Drawing.Size(80, 17);
+            this.rbModifiedOn.Size = new System.Drawing.Size(192, 17);
             this.rbModifiedOn.TabIndex = 1;
-            this.rbModifiedOn.Text = "Modified on";
+            this.rbModifiedOn.Text = "Most Recently Edited (Modified On)";
             this.rbModifiedOn.UseVisualStyleBackColor = true;
+            // 
+            // rbNoOfActivities
+            // 
+            this.rbNoOfActivities.AutoSize = true;
+            this.rbNoOfActivities.Enabled = false;
+            this.rbNoOfActivities.Location = new System.Drawing.Point(33, 106);
+            this.rbNoOfActivities.Name = "rbNoOfActivities";
+            this.rbNoOfActivities.Size = new System.Drawing.Size(142, 17);
+            this.rbNoOfActivities.TabIndex = 0;
+            this.rbNoOfActivities.Text = "Max Number of Activities";
+            this.rbNoOfActivities.UseVisualStyleBackColor = true;
             // 
             // rbCreatedOn
             // 
@@ -471,10 +403,10 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.rbCreatedOn.Enabled = false;
             this.rbCreatedOn.Location = new System.Drawing.Point(33, 37);
             this.rbCreatedOn.Name = "rbCreatedOn";
-            this.rbCreatedOn.Size = new System.Drawing.Size(77, 17);
+            this.rbCreatedOn.Size = new System.Drawing.Size(118, 17);
             this.rbCreatedOn.TabIndex = 0;
             this.rbCreatedOn.TabStop = true;
-            this.rbCreatedOn.Text = "Created on";
+            this.rbCreatedOn.Text = "Oldest (Created On)";
             this.rbCreatedOn.UseVisualStyleBackColor = true;
             // 
             // toolStrip1
@@ -517,6 +449,8 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.Name = "DuplicateDetectionReportTool";
             this.Size = new System.Drawing.Size(813, 553);
             this.tcReport.ResumeLayout(false);
+            this.tabPage1.ResumeLayout(false);
+            this.tabPage1.PerformLayout();
             this.tbDuplicateDetection.ResumeLayout(false);
             this.tbDuplicateDetection.PerformLayout();
             this.gbDuplicateDetectionJob.ResumeLayout(false);
@@ -528,12 +462,6 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.toolStripMenu.PerformLayout();
             this.tbMergeDuplicates.ResumeLayout(false);
             this.tbMergeDuplicates.PerformLayout();
-            this.groupBox4.ResumeLayout(false);
-            this.groupBox4.PerformLayout();
-            this.groupBox5.ResumeLayout(false);
-            this.groupBox5.PerformLayout();
-            this.gbOrder.ResumeLayout(false);
-            this.gbOrder.PerformLayout();
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
             this.toolStrip1.ResumeLayout(false);
@@ -573,17 +501,12 @@ namespace CRMConsultants.DuplicateDetectionReport
         private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.RadioButton rbModifiedOn;
         private System.Windows.Forms.RadioButton rbCreatedOn;
-        private System.Windows.Forms.GroupBox gbOrder;
-        private System.Windows.Forms.RadioButton rbDes;
-        private System.Windows.Forms.RadioButton rbAsc;
-        private System.Windows.Forms.CheckBox cbDeleteJob;
         private GroupBox gbDuplicateDetectionJob;
         private ComboBox cmbDuplicateDetectionJobs;
-        private GroupBox groupBox4;
-        private RadioButton rbLeast;
-        private RadioButton rbMost;
-        private GroupBox groupBox5;
         private RadioButton rbnNoOfCompletedFields;
         private RadioButton rbNoOfActivities;
+        private Label label1;
+        private TabPage tabPage1;
+        private TextBox textBox1;
     }
 }
