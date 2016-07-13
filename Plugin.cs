@@ -10,8 +10,8 @@ namespace CRMConsultants.DuplicateDetectionReport
     ExportMetadata("BackgroundColor", "#263764"),
     ExportMetadata("PrimaryFontColor", "White"),
     ExportMetadata("SecondaryFontColor", "LightGray"),
-    ExportMetadata("Name", "Duplicate Detection Report"),
-    ExportMetadata("Description", "You can detect the duplicate records in the system and export to excel.")]
+    ExportMetadata("Name", "Duplicate Detection Report for Bulk Merge"),
+    ExportMetadata("Description", "Generates Excel Report for duplicates inc. count of completed fields and activities for each record.")]
     public class Plugin : PluginBase
     {
         public override IXrmToolBoxPluginControl GetControl()

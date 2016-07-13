@@ -972,8 +972,8 @@ namespace CRMConsultants.DuplicateDetectionReport
             entity.Attributes["ActivitiesCount"] = countOfActivities;
 
             entity.Attributes["CountOfCompletedFields"] = countOfCompletedFields;
-            excell_app.addData(row, column, Convert.ToString(countOfActivities), "A" + row, "B" + row);
-            excell_app.addData(row, column + 1, Convert.ToString(countOfCompletedFields), "A" + row, "B" + row);
+           // excell_app.addData(row, column, Convert.ToString(countOfActivities), "A" + row, "B" + row);
+           // excell_app.addData(row, column + 1, Convert.ToString(countOfCompletedFields), "A" + row, "B" + row);
             row++;
             return entity;
             #endregion # Activities Count#
