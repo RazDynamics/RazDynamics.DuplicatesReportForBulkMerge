@@ -380,15 +380,19 @@ namespace CRMConsultants.DuplicateDetectionReport
             return attributeValue;
         }
 
-        private void GenerateHeader(CreateExcelDoc excell_app)
+        private void GenerateHeader(CreateExcelDoc excell_app,ref object [,] data)
         {
             int counter = 0;
             for (counter = 0; counter < ApplicationSetting.AttributesToDisplayName.Count(); counter++)
             {
-                excell_app.createHeaders(1, counter + 1, ApplicationSetting.AttributesToDisplayName[counter], "A1", "A1", 0, "", true, 10, "n");
+                data[0, counter] = ApplicationSetting.AttributesToDisplayName[counter];
+               // excell_app.createHeaders(1, counter + 1, ApplicationSetting.AttributesToDisplayName[counter], "A1", "A1", 0, "", true, 10, "n");
             }
-            excell_app.createHeaders(1, counter + 1, "Activities Count", "A1", "A1", 0, "", true, 10, "n");
-            excell_app.createHeaders(1, counter + 2, "Count of Fields entered", "A1", "A1", 0, "", true, 10, "n");
+
+            data[0, counter] = "Activities Count";
+            data[0, counter+1] = "Count of Fields entered";
+            //excell_app.createHeaders(1, counter + 1, "Activities Count", "A1", "A1", 0, "", true, 10, "n");
+           // excell_app.createHeaders(1, counter + 2, "Count of Fields entered", "A1", "A1", 0, "", true, 10, "n");
         }
 
         private void GetAttributesList()
@@ -506,6 +510,7 @@ namespace CRMConsultants.DuplicateDetectionReport
                         progressCounter++;
                     }
                     #endregion Duplicate Collection #
+
                     progressCounter = 0;
                     bw.ReportProgress(1, "Duplicate merge started........");
 
@@ -809,14 +814,14 @@ namespace CRMConsultants.DuplicateDetectionReport
 
                             excell_app = new CreateExcelDoc(txtFilePath.Text.Trim());
 
-                            GenerateHeader(excell_app);
+                            //GenerateHeader(excell_app);
 
                             bw.ReportProgress(100, string.Concat("Duplicate ", ApplicationSetting.SelectedEntity.DisplayName, " found (", entityColl.Entities.Count, ")"));
 
-                            int row = 2;
+                            int row = 1;
 
                             bw.ReportProgress(0, "Retrieving duplicate records........");
-
+                            int rowCount = 0;
                             IEnumerable<System.Linq.IGrouping<object, Entity>> entityCollGroupBy = entityColl.Entities.GroupBy(ent => ent.Attributes[ApplicationSetting.SelectedEntity.PrimaryIdAttribute]);
                             List<Guid> chidList = new List<Guid>();
                             foreach (IEnumerable<Entity> elements in entityCollGroupBy)
@@ -828,13 +833,13 @@ namespace CRMConsultants.DuplicateDetectionReport
                                     {
                                         if (!DoesItContain(ApplicationSetting.DuplicateRecords, entity.Id))
                                         {
+                                            rowCount++;
                                             DuplicateRecords rec = new DuplicateRecords();
                                             rec.MasterId = entity.Id;
                                             if (elements != null && elements.Count() > 0)
                                             {
                                                 var activityGroupBy = elements.Where(cnt => cnt.Attributes.Contains("Activities.activitytypecode") && cnt.Attributes["Activities.activitytypecode"] != null);
-                                                entity.Attributes["ActivitiesCount"] = activityGroupBy != null ? activityGroupBy.Count() : 0;
-                                                
+                                                entity.Attributes["ActivitiesCount"] = activityGroupBy != null ? activityGroupBy.Count() : 0;                                                
                                             }
                                             else
                                             {
@@ -860,6 +865,7 @@ namespace CRMConsultants.DuplicateDetectionReport
                                                 {
                                                     if (!DoesItContain(ApplicationSetting.DuplicateRecords, duplicate.Id))
                                                     {
+                                                        rowCount++;
                                                         rec.ChildIds.Add(duplicate.Id);
                                                         chidList.Add(duplicate.Id);
                                                         childRecords.Add(duplicate);
@@ -884,21 +890,29 @@ namespace CRMConsultants.DuplicateDetectionReport
                             {
                                 childs = GetRelatedDuplicateRecords(chidList.ToArray());
                             }
+         
+                            int columnCount = ApplicationSetting.AttributesToDisplayName.Count() + 2;
+                            var data = new object[rowCount+1, columnCount];
+
+                            GenerateHeader(excell_app, ref data);
 
                             for (int indexofRecord = 0; indexofRecord < DuplicateRecords.Count(); indexofRecord++)
                             {
                                 bw.ReportProgress(progressCounter * 100 / DuplicateRecords.Count(), string.Concat("Generating Duplicate report........"));
-                                ApplicationSetting.DuplicateRecords[indexofRecord].MasterEntity = GetExcelPopulated(DuplicateRecords[indexofRecord].MasterEntity, 1, excell_app, ref row, null, Convert.ToInt32(DuplicateRecords[indexofRecord].MasterEntity.Attributes["ActivitiesCount"]), true);
+                                ApplicationSetting.DuplicateRecords[indexofRecord].MasterEntity = GetExcelPopulated(DuplicateRecords[indexofRecord].MasterEntity,0, excell_app, ref row, null, Convert.ToInt32(DuplicateRecords[indexofRecord].MasterEntity.Attributes["ActivitiesCount"]), true,ref data);
+
                                 for (int indexOfChild = 0; indexOfChild < DuplicateRecords[indexofRecord].ChildEntity.Count(); indexOfChild++)
                                 {
                                     if (DuplicateRecords[indexofRecord].ChildEntity.ElementAt(indexOfChild) != null)
                                     {
                                         var activities = childs != null && childs.Entities.Count > 0 ? (childs.Entities.Where(i => ((EntityReference)i.Attributes["regardingobjectid"]).Id == DuplicateRecords[indexofRecord].ChildEntity.ElementAt(indexOfChild).Id).Count()) : 0;
-                                        ApplicationSetting.DuplicateRecords[indexofRecord].ChildEntity[indexOfChild] = GetExcelPopulated(DuplicateRecords[indexofRecord].ChildEntity.ElementAt(indexOfChild), 1, excell_app, ref row, null, activities, false);
+                                        ApplicationSetting.DuplicateRecords[indexofRecord].ChildEntity[indexOfChild] = GetExcelPopulated(DuplicateRecords[indexofRecord].ChildEntity.ElementAt(indexOfChild), 0, excell_app, ref row, null, activities, false,ref data);
                                     }
                                 }
                                 progressCounter++;
                             }
+
+                            excell_app.WriteArray(rowCount+1, columnCount, data);
                             bw.ReportProgress(100, "Duplicate detection completed........");
 
                             excell_app.worksheet.SaveAs(txtFilePath.Text);
@@ -907,7 +921,8 @@ namespace CRMConsultants.DuplicateDetectionReport
 
                             this.Invoke(new Action(() =>
                             {
-                                excell_app.app.DisplayAlerts = true;        
+                                excell_app.app.DisplayAlerts = true;
+                                excell_app.app.Calculation = Microsoft.Office.Interop.Excel.XlCalculation.xlCalculationAutomatic;
                                 excell_app.app.ScreenUpdating = true;
                                 excell_app.app.Visible = true;
                             }));
@@ -938,7 +953,7 @@ namespace CRMConsultants.DuplicateDetectionReport
             });
         }
 
-        private Entity GetExcelPopulated(Entity entity, int column, CreateExcelDoc excell_app, ref int row, IEnumerable<Entity> elements, int countActivities, bool isParent)
+        private Entity GetExcelPopulated(Entity entity, int column, CreateExcelDoc excell_app, ref int row, IEnumerable<Entity> elements, int countActivities, bool isParent,ref object[,] data)
         {
             int countOfCompletedFields = 0;
             foreach (string attributeName in ApplicationSetting.AttributesSchemaList)
@@ -951,7 +966,8 @@ namespace CRMConsultants.DuplicateDetectionReport
                         var attributeObj = entity.Attributes[attributeName];
                         string type = attributeObj.GetType().Name;
                         string attributeValue = GetAttributeValue(entity, attributeName, attributeObj, type);
-                        excell_app.addData(row, column, attributeValue, "A" + row, "B" + row);
+                        // excell_app.addData(row, column, attributeValue, "A" + row, "B" + row);
+                        data[row, column] = attributeValue;
                     }
                 }
                 if (ApplicationSetting.AttributesToDisplay.Contains(attributeName))
@@ -972,8 +988,10 @@ namespace CRMConsultants.DuplicateDetectionReport
             entity.Attributes["ActivitiesCount"] = countOfActivities;
 
             entity.Attributes["CountOfCompletedFields"] = countOfCompletedFields;
-           // excell_app.addData(row, column, Convert.ToString(countOfActivities), "A" + row, "B" + row);
-           // excell_app.addData(row, column + 1, Convert.ToString(countOfCompletedFields), "A" + row, "B" + row);
+            data[row, column] = Convert.ToString(countOfActivities);
+            data[row, column+1] = Convert.ToString(countOfCompletedFields);
+            // excell_app.addData(row, column, Convert.ToString(countOfActivities), "A" + row, "B" + row);
+            // excell_app.addData(row, column + 1, Convert.ToString(countOfCompletedFields), "A" + row, "B" + row);
             row++;
             return entity;
             #endregion # Activities Count#

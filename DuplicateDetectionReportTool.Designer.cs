@@ -136,7 +136,7 @@ namespace CRMConsultants.DuplicateDetectionReport
             this.gbDuplicateDetectionJob.Size = new System.Drawing.Size(320, 59);
             this.gbDuplicateDetectionJob.TabIndex = 98;
             this.gbDuplicateDetectionJob.TabStop = false;
-            this.gbDuplicateDetectionJob.Text = "Select Job to Run";
+            this.gbDuplicateDetectionJob.Text = "Select Duplicate Detection Job To Analyze";
             this.gbDuplicateDetectionJob.Visible = false;
             // 
             // cmbDuplicateDetectionJobs
